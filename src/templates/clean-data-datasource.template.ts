@@ -21,7 +21,7 @@ export function genCleanLocalDataDatasourceTemplate (entityName: string, isList:
   const typeName = isList ? `List<${pascalCaseDomainEntityName}Model>` : `${pascalCaseDomainEntityName}Model`;
   const methodName = isList ? `get${pascalCaseDomainEntityName}List` : `get${pascalCaseDomainEntityName}`;
   const defaultVarName = isList ? `default${pascalCaseDomainEntityName}s` : `default${pascalCaseDomainEntityName}`;
-  const defaultVarValue = isList ? `[ const ${pascalCaseDomainEntityName}() ]` : `const ${pascalCaseDomainEntityName}()`;
+  const defaultVarValue = isList ? `[ const ${pascalCaseDomainEntityName}Model() ]` : `const ${pascalCaseDomainEntityName}Model()`;
   return `import 'package:shared_lib/base.dart' show AsyncResponse;
 import '${snakeCaseDomainEntityName}_datasource_type.dart';
 import '../models/${snakeCaseDomainEntityName}_model.dart';
