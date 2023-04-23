@@ -43,11 +43,11 @@ class ${className}Data with _$${className}Data {
 
   return `import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_lib/base.dart';
+import 'package:base/base.dart' show NetResponse;
 
 import '${snakeCaseDomainEntityName}_model.dart';
 
-part '${snakeCaseDomainEntityName}s_net_response.freezed.dart';
+part '${fileName}_net_response.freezed.dart';
 part '${fileName}_net_response.g.dart';
 
 @freezed

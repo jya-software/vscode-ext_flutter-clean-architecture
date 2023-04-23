@@ -56,7 +56,7 @@ function getFreezedBlocTemplate(blocName:string): string {
   return `import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-part '${snakeCaseBlocName}_bloc.dart';
+part '${snakeCaseBlocName}_event.dart';
 part '${snakeCaseBlocName}_state.dart';
 part '${snakeCaseBlocName}_bloc.freezed.dart';
 

@@ -5,7 +5,7 @@ export function genCleanDataDatasourceTypeTemplate (entityName: string, isList: 
   const snakeCaseDomainEntityName = changeCase.snakeCase(entityName.toLowerCase());
   const typeName = isList ? `List<${pascalCaseDomainEntityName}Model>` : `${pascalCaseDomainEntityName}Model`;
   const methodName = isList ? `get${pascalCaseDomainEntityName}List` : `get${pascalCaseDomainEntityName}`;
-  return `import 'package:shared_lib/base.dart' show AsyncResponse;
+  return `import 'package:base/base.dart' show AsyncResponse;
 
 import '../models/${snakeCaseDomainEntityName}_model.dart';
 
@@ -22,7 +22,7 @@ export function genCleanLocalDataDatasourceTemplate (entityName: string, isList:
   const methodName = isList ? `get${pascalCaseDomainEntityName}List` : `get${pascalCaseDomainEntityName}`;
   const defaultVarName = isList ? `default${pascalCaseDomainEntityName}s` : `default${pascalCaseDomainEntityName}`;
   const defaultVarValue = isList ? `[ const ${pascalCaseDomainEntityName}Model() ]` : `const ${pascalCaseDomainEntityName}Model()`;
-  return `import 'package:shared_lib/base.dart' show AsyncResponse;
+  return `import 'package:base/base.dart' show AsyncResponse;
 import '${snakeCaseDomainEntityName}_datasource_type.dart';
 import '../models/${snakeCaseDomainEntityName}_model.dart';
 
@@ -43,7 +43,7 @@ export function genCleanDataApiTemplate(entityName: string, isList: boolean){
   const methodName = isList ? `get${pascalCaseDomainEntityName}List` : `get${pascalCaseDomainEntityName}`;
   const netResName = isList ? `${pascalCaseDomainEntityName}sNetResponse` : `${pascalCaseDomainEntityName}NetResponse`;
   return `import 'package:retrofit/retrofit.dart';
-import 'package:shared_lib/dio.dart';
+import 'package:dio/dio.dart';
 
 import '../models/${snakeCaseDomainEntityName}${isList ? "s":""}_net_response.dart';
 
@@ -65,7 +65,7 @@ export function genCleanRemoteDatasourceTemplate (entityName: string, isList: bo
   const typeName = isList ? `List<${pascalCaseDomainEntityName}Model>` : `${pascalCaseDomainEntityName}Model`;
   const methodName = isList ? `get${pascalCaseDomainEntityName}List` : `get${pascalCaseDomainEntityName}`;
   const netResName = isList ? `${pascalCaseDomainEntityName}sNetResponse` : `${pascalCaseDomainEntityName}NetResponse`;
-  return `import 'package:shared_lib/base.dart'
+  return `import 'package:base/base.dart'
 show AsyncResponse, NetConfig, handleNetResponse;
 import '../models/${snakeCaseDomainEntityName}${isList ? "s":""}_net_response.dart';
 import '../models/${snakeCaseDomainEntityName}_model.dart';

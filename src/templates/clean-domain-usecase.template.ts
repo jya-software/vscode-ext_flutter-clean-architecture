@@ -6,7 +6,7 @@ export function genCleanDomainUsecaseTemplate(entityName: string, isList: boolea
   const variableCaseEntityName = pascalCaseEntityName[0].toLowerCase() + pascalCaseEntityName.slice(1);
   const className = isList ? `Load${pascalCaseEntityName}ListUsecase` : `Load${pascalCaseEntityName}Usecase`;
   const typeName = isList ? `List<${pascalCaseEntityName}Type>` : `${pascalCaseEntityName}Type`;
-  return `import 'package:shared_lib/base.dart' show AsyncResponse, UseCase, NoParams;
+  return `import 'package:base/base.dart' show AsyncResponse, UseCase, NoParams;
 
 import '../entities/${snakeCaseEntityName}_type.dart';
 import '../repositories/${snakeCaseEntityName}_repo_type.dart';
