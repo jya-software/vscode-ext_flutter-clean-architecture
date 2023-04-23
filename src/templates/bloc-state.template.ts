@@ -2,10 +2,11 @@ import * as changeCase from "change-case";
 
 export function getBlocStateTemplate (
   blocName: string,
-  useEquatable: boolean
+  useEquatable: boolean,
+  useFreezed: boolean,  
 ): string {
-  return useEquatable
-    ? getEquatableBlocStateTemplate(blocName)
+  return useFreezed ? getFreezedBlocStateTemplate(blocName) :
+    useEquatable ? getEquatableBlocStateTemplate(blocName)
     : getDefaultBlocStateTemplate(blocName);
 }
 
@@ -31,5 +32,16 @@ function getDefaultBlocStateTemplate (blocName: string): string {
 @immutable
 abstract class ${pascalCaseBlocName}State {}
 class ${pascalCaseBlocName}Initial extends ${pascalCaseBlocName}State {}
+`;
+}
+
+function getFreezedBlocStateTemplate(blocName:string): string {
+  const pascalCaseBlocName = changeCase.pascalCase(blocName.toLowerCase());
+  const snakeCaseBlocName = changeCase.snakeCase(blocName.toLowerCase());
+  return `part of '${snakeCaseBlocName}_bloc.dart';
+@freezed
+class ${pascalCaseBlocName}State with _$${pascalCaseBlocName}State {
+  const factory ${pascalCaseBlocName}State.initial() = _Initial;
+}
 `;
 }

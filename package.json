@@ -10,7 +10,7 @@
   },
   "license": "MIT",
   "engines": {
-    "vscode": "^1.31.0"
+    "vscode": "^1.77.0"
   },
   "categories": [
     "Programming Languages"
@@ -64,7 +64,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "yarn run compile",
     "test": "node ./out/test/runTest.js",
-    "deploy": "vsce publish --yarn"
+    "deploy": "vsce publish --yarn",
+    "package": "vsce package --yarn"
   },
   "devDependencies": {
     "@types/change-case": "^2.3.1",
@@ -76,13 +77,13 @@
     "@types/node": "^12.7.8",
     "@types/rimraf": "^2.0.2",
     "@types/semver": "^6.0.2",
-    "@types/vscode": "^1.31.0",
+    "@types/vscode": "^1.77.0",
     "cz-conventional-changelog": "^3.0.2",
     "glob": "^7.1.4",
     "mocha": "^6.1.4",
     "tslint": "^5.12.1",
-    "typescript": "^3.3.1",
-    "vsce": "^1.81.1",
+    "typescript": "^5.0.4",
+    "vsce": "^2.15.0",
     "vscode-test": "^1.2.0"
   },
   "dependencies": {

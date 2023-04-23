@@ -91,8 +91,8 @@ export async function analyzeDependencies() {
   ];
 
   const pubspec = await getPubspec();
-  const dependencies = _.get(pubspec, "dependencies", {});
-  const devDependencies = _.get(pubspec, "dev_dependencies", {});
+  const dependencies = _.get(pubspec, "dependencies", []);
+  const devDependencies = _.get(pubspec, "dev_dependencies", []);
 
   checkForUpgrades(dependenciesToAnalyze, dependencies);
   checkForUpgrades(devDependenciesToAnalyze, devDependencies);

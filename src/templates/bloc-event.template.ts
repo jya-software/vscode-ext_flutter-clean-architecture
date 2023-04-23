@@ -2,10 +2,11 @@ import * as changeCase from "change-case";
 
 export function getBlocEventTemplate (
   blocName: string,
-  useEquatable: boolean
+  useEquatable: boolean,
+  useFreezed: boolean,
 ): string {
-  return useEquatable
-    ? getEquatableBlocEventTemplate(blocName)
+  return useFreezed ? getFreezedBlocEventTemplate(blocName) :
+    useEquatable ? getEquatableBlocEventTemplate(blocName)
     : getDefaultBlocEventTemplate(blocName);
 }
 
@@ -29,5 +30,17 @@ function getDefaultBlocEventTemplate (blocName: string): string {
   return `part of '${snakeCaseBlocName}_bloc.dart';
 @immutable
 abstract class ${pascalCaseBlocName}Event {}
+`;
+}
+
+function getFreezedBlocEventTemplate(blocName:string): string {
+  const pascalCaseBlocName = changeCase.pascalCase(blocName.toLowerCase());
+  const snakeCaseBlocName = changeCase.snakeCase(blocName.toLowerCase());
+  return `part of '${snakeCaseBlocName}_bloc.dart';
+
+@freezed
+class ${pascalCaseBlocName}Event with _$${pascalCaseBlocName}Event {
+  const factory ${pascalCaseBlocName}Event.started() = _Started;
+}
 `;
 }

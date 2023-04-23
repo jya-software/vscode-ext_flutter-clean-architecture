@@ -19,6 +19,16 @@ import {
   getBlocTemplate,
   getCubitStateTemplate,
   getCubitTemplate,
+  genCleanDataApiTemplate,
+  genCleanDataDatasourceTypeTemplate,
+  genCleanDataEntitiesTemplate,
+  genCleanDataNetResponseTemplate,
+  genCleanDataRepoTemplate,
+  genCleanDomainEntitiesTemplate,
+  genCleanDomainRepoTemplate,
+  genCleanDomainUsecaseTemplate,
+  genCleanLocalDataDatasourceTemplate,
+  genCleanRemoteDatasourceTemplate
 } from "./templates";
 import { analyzeDependencies } from "./utils";
 
@@ -43,8 +53,21 @@ export async function Go (uri: Uri, useCubit: boolean) {
     window.showErrorMessage("The name must not be empty");
     return;
   }
+
   featureName = `${featureName}`;
 
+  let entityName = featureName;
+  let isList = false;
+
+  if(!useCubit){
+    entityName = await promptForEntityName(featureName);
+    if (!isNameValid(entityName)) {
+      window.showErrorMessage("The name must not be empty");
+    }
+    entityName = `${entityName}`;
+    isList = await promptForDataList();
+  }
+ 
   let targetDirectory = "";
   try {
     targetDirectory = await getTargetDirectory(uri);
@@ -53,6 +76,7 @@ export async function Go (uri: Uri, useCubit: boolean) {
   }
 
   const useEquatable = true;
+  const useFreezed = true;
 
   const pascalCaseFeatureName = changeCase.pascalCase(
     featureName.toLowerCase()
@@ -62,7 +86,14 @@ export async function Go (uri: Uri, useCubit: boolean) {
       `${featureName}`,
       targetDirectory,
       useEquatable,
-      useCubit
+      useCubit,
+      useFreezed
+    );
+    await generateCleanArchitectureCode(
+      `${featureName}`,
+      `${entityName}`,
+      isList,
+      targetDirectory,
     );
     window.showInformationMessage(
       `Successfully Generated ${pascalCaseFeatureName} Feature`
@@ -126,6 +157,30 @@ export function promptForFeatureName (): Thenable<string | undefined> {
   return window.showInputBox(blocNamePromptOptions);
 }
 
+export function promptForEntityName (featureName: string): Thenable<string | undefined> {
+  const entityNamePromptOptions: InputBoxOptions = {
+    prompt: "Entity Name",
+    placeHolder: featureName,
+    value: featureName,
+  };
+  return window.showInputBox(entityNamePromptOptions);
+}
+
+export async function promptForDataList (): Promise<boolean> {
+  const useDataListPromptValues: string[] = ["no (default)", "yes (advanced)"];
+  const useDataListPromptOptions: QuickPickOptions = {
+    placeHolder:
+      "Is your response is List<DataModel>?",
+    canPickMany: false,
+  };
+  const answer = await window.showQuickPick(
+    useDataListPromptValues,
+    useDataListPromptOptions
+  );
+
+  return answer === "yes (advanced)";
+}
+
 export async function promptForUseEquatable (): Promise<boolean> {
   const useEquatablePromptValues: string[] = ["no (default)", "yes (advanced)"];
   const useEquatablePromptOptions: QuickPickOptions = {
@@ -142,10 +197,140 @@ export async function promptForUseEquatable (): Promise<boolean> {
   return answer === "yes (advanced)";
 }
 
+async function generateCleanArchitectureCode(
+  featureName: string,
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  const featuresDirectoryPath = getFeaturesDirectoryPath(targetDirectory);
+  const featureDirectoryPath = path.join(featuresDirectoryPath, featureName);
+  const dataDirectoryPath = path.join(featureDirectoryPath, "data");
+  const domainDirectoryPath = path.join(featureDirectoryPath, "domain");
+  await Promise.all([
+    generateDomainCode(featureName, entityName, isList, domainDirectoryPath),
+    generateDataCode(featureName, entityName,isList, dataDirectoryPath)
+  ]);
+}
+
+async function generateDomainCode(
+  featureName: string,
+  entityName:string,
+  isList: boolean,
+  targetDirectory: string) {
+  await Promise.all([
+    createDomainEntityTemplate(entityName, isList, path.join(targetDirectory, "entities")),
+    createDomainRepositoryTemplate(entityName, isList, path.join(targetDirectory, "repositories")),
+    createDomainUsecaseTemplate(entityName, isList, path.join(targetDirectory, "usecases")),
+  ]);
+}
+
+async function createDomainEntityTemplate(
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
+  const entityFileName = `${snakeCaseName}_type.dart`;
+  const entityFilePath = path.join(targetDirectory, entityFileName);
+  const entityFileContent = await genCleanDomainEntitiesTemplate(entityName);
+  await createTemplateFile(entityFilePath, entityFileContent);
+}
+
+async function createDomainRepositoryTemplate(
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
+  const repositoryFileName = `${snakeCaseName}_repo_type.dart`;
+  const repositoryFilePath = path.join(targetDirectory, repositoryFileName);
+  const repositoryFileContent = await genCleanDomainRepoTemplate(entityName, isList);
+  await createTemplateFile(repositoryFilePath, repositoryFileContent);
+}
+
+async function createDomainUsecaseTemplate(
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
+  const fileName = isList ? `${snakeCaseName}_list` : `${snakeCaseName}`;
+  const usecaseFileName = `load_${fileName}_usecase.dart`;
+  const usecaseFilePath = path.join(targetDirectory, usecaseFileName);
+  const usecaseFileContent = await genCleanDomainUsecaseTemplate(entityName, isList);
+  await createTemplateFile(usecaseFilePath, usecaseFileContent);
+}
+
+async function generateDataCode(
+  featureName: string,
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  await Promise.all([
+    createDataDatasourceTemplate(entityName, isList, path.join(targetDirectory, "datasources")),
+    createDataModelTemplate(entityName, isList, path.join(targetDirectory, "models")),
+    createDataRepositoryTemplate(entityName, isList, path.join(targetDirectory, "repositories")),
+  ]);
+}
+
+async function createDataDatasourceTemplate(
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  // api
+  const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
+  const apiFileName = `${snakeCaseName}_api.dart`;
+  const apiFilePath = path.join(targetDirectory, apiFileName);
+  const apiFileContent = await genCleanDataApiTemplate(entityName, isList);
+  await createTemplateFile(apiFilePath, apiFileContent);
+  // datasource type
+  const datasourceTypeFileName = `${snakeCaseName}_datasource_type.dart`;
+  const datasourceTypeFilePath = path.join(targetDirectory, datasourceTypeFileName);
+  const datasourceTypeFileContent = await genCleanDataDatasourceTypeTemplate(entityName, isList);
+  await createTemplateFile(datasourceTypeFilePath, datasourceTypeFileContent);
+  // local datasource
+  const localDatasourceFileName = `${snakeCaseName}_local_datasource.dart`;
+  const localDatasourceFilePath = path.join(targetDirectory, localDatasourceFileName);
+  const localDatasourceFileContent = await genCleanLocalDataDatasourceTemplate(entityName, isList);
+  await createTemplateFile(localDatasourceFilePath, localDatasourceFileContent);
+  // remote datasource
+  const remoteDatasourceFileName = `${snakeCaseName}_remote_datasource.dart`;
+  const remoteDatasourceFilePath = path.join(targetDirectory, remoteDatasourceFileName);
+  const remoteDatasourceFileContent = await genCleanRemoteDatasourceTemplate(entityName, isList);
+  await createTemplateFile(remoteDatasourceFilePath, remoteDatasourceFileContent);
+}
+
+async function createDataModelTemplate(
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
+  // model
+  const modelFileName = `${snakeCaseName}_model.dart`;
+  const modelFilePath = path.join(targetDirectory, modelFileName);
+  const modelFileContent = await genCleanDataEntitiesTemplate(entityName);  
+  await createTemplateFile(modelFilePath, modelFileContent);
+  // net response
+  const netResName = isList ? `${snakeCaseName}s` : `${snakeCaseName}`;
+  const netResponseFileName = `${netResName}_net_response.dart`;
+  const netResponseFilePath = path.join(targetDirectory, netResponseFileName);
+  const netResponseFileContent = await genCleanDataNetResponseTemplate(entityName, isList);
+  await createTemplateFile(netResponseFilePath, netResponseFileContent);
+}
+
+async function createDataRepositoryTemplate(
+  entityName: string,
+  isList: boolean,
+  targetDirectory: string) {
+  const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
+  const repositoryFileName = `${snakeCaseName}_repo.dart`;
+  const repositoryFilePath = path.join(targetDirectory, repositoryFileName);
+  const repositoryFileContent = await genCleanDataRepoTemplate(entityName, isList);
+  await createTemplateFile(repositoryFilePath, repositoryFileContent);
+}
+
 async function generateBlocCode (
   blocName: string,
   targetDirectory: string,
-  useEquatable: boolean
+  useEquatable: boolean,
+  useFreezed: boolean,
 ) {
   const blocDirectoryPath = `${targetDirectory}/bloc`;
   if (!existsSync(blocDirectoryPath)) {
@@ -153,9 +338,9 @@ async function generateBlocCode (
   }
 
   await Promise.all([
-    createBlocEventTemplate(blocName, targetDirectory, useEquatable),
-    createBlocStateTemplate(blocName, targetDirectory, useEquatable),
-    createBlocTemplate(blocName, targetDirectory, useEquatable),
+    createBlocEventTemplate(blocName, targetDirectory, useEquatable, useFreezed),
+    createBlocStateTemplate(blocName, targetDirectory, useEquatable, useFreezed),
+    createBlocTemplate(blocName, targetDirectory, useEquatable, useFreezed),
   ]);
 }
 
@@ -179,7 +364,8 @@ export async function generateFeatureArchitecture (
   featureName: string,
   targetDirectory: string,
   useEquatable: boolean,
-  useCubit: boolean
+  useCubit: boolean,
+  useFreezed: boolean
 ) {
   // Create the features directory if its does not exist yet
   const featuresDirectoryPath = getFeaturesDirectoryPath(targetDirectory);
@@ -221,8 +407,10 @@ export async function generateFeatureArchitecture (
   // Generate the bloc code in the presentation layer
   useCubit
     ? await generateCubitCode(featureName, presentationDirectoryPath, useEquatable)
-    : await generateBlocCode(featureName, presentationDirectoryPath, useEquatable);
+    : await generateBlocCode(featureName, presentationDirectoryPath, useEquatable, useFreezed);
 }
+
+
 
 export function getFeaturesDirectoryPath (currentDirectory: string): string {
   // Split the path
@@ -271,7 +459,8 @@ function createDirectory (targetDirectory: string): Promise<void> {
 function createBlocEventTemplate (
   blocName: string,
   targetDirectory: string,
-  useEquatable: boolean
+  useEquatable: boolean,
+  useFreezed: boolean
 ) {
   const snakeCaseBlocName = changeCase.snakeCase(blocName.toLowerCase());
   const targetPath = `${targetDirectory}/bloc/${snakeCaseBlocName}_event.dart`;
@@ -281,7 +470,7 @@ function createBlocEventTemplate (
   return new Promise(async (resolve, reject) => {
     writeFile(
       targetPath,
-      getBlocEventTemplate(blocName, useEquatable),
+      getBlocEventTemplate(blocName, useEquatable, useFreezed),
       "utf8",
       (error) => {
         if (error) {
@@ -294,10 +483,26 @@ function createBlocEventTemplate (
   });
 }
 
+function createTemplateFile(targetPath: string, content: string): Promise<boolean> {
+  if (existsSync(targetPath)) {
+    throw Error(`${targetPath} already exists`);
+  }
+  return new Promise((resolve, reject) => {
+    writeFile(targetPath, content, "utf8", (error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(true);
+    });
+  });
+}
+
 function createBlocStateTemplate (
   blocName: string,
   targetDirectory: string,
-  useEquatable: boolean
+  useEquatable: boolean,
+  useFreezed: boolean
 ) {
   const snakeCaseBlocName = changeCase.snakeCase(blocName.toLowerCase());
   const targetPath = `${targetDirectory}/bloc/${snakeCaseBlocName}_state.dart`;
@@ -307,7 +512,7 @@ function createBlocStateTemplate (
   return new Promise(async (resolve, reject) => {
     writeFile(
       targetPath,
-      getBlocStateTemplate(blocName, useEquatable),
+      getBlocStateTemplate(blocName, useEquatable, useFreezed),
       "utf8",
       (error) => {
         if (error) {
@@ -323,7 +528,8 @@ function createBlocStateTemplate (
 function createBlocTemplate (
   blocName: string,
   targetDirectory: string,
-  useEquatable: boolean
+  useEquatable: boolean,
+  useFreezed: boolean
 ) {
   const snakeCaseBlocName = changeCase.snakeCase(blocName.toLowerCase());
   const targetPath = `${targetDirectory}/bloc/${snakeCaseBlocName}_bloc.dart`;
@@ -333,7 +539,7 @@ function createBlocTemplate (
   return new Promise(async (resolve, reject) => {
     writeFile(
       targetPath,
-      getBlocTemplate(blocName, useEquatable),
+      getBlocTemplate(blocName, useEquatable, useFreezed),
       "utf8",
       (error) => {
         if (error) {
