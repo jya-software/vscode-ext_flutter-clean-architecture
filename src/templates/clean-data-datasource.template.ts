@@ -53,7 +53,7 @@ part '${snakeCaseDomainEntityName}_api.g.dart';
 abstract class ${pascalCaseDomainEntityName}Api {
   factory ${pascalCaseDomainEntityName}Api(Dio dio, {String baseUrl}) = _${pascalCaseDomainEntityName}Api;
 
-  @GET("/api/init/")
+  @GET()
   Future<${netResName}> ${methodName}(@Query('client_id') String clientId);
 }
   `;

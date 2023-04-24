@@ -34,7 +34,7 @@ export function genCleanDataNetResponseTemplate (entityName: string, isList: boo
   const listModelClass = isList ? `@Freezed(makeCollectionsUnmodifiable: false)
 class ${className}Data with _$${className}Data {
   const factory ${className}Data({
-    @JsonKey(name: "${snakeCaseDomainEntityName}_list") List<${pascalCaseDomainEntityName}Model>? ${fileName},
+    @JsonKey(name: ) List<${pascalCaseDomainEntityName}Model>? ${fileName},
   }) = _${className}Data;
 
   factory ${className}Data.fromJson(Map<String, Object?> json) =>

@@ -32,6 +32,16 @@ import {
 } from "./templates";
 import { analyzeDependencies } from "./utils";
 
+const BOTH_DATASOURCE = 0;
+const LOCAL_DATASOURCE = 1;
+const REMOTE_DATASOURCE = 2;
+
+const options = [
+  "local&remote",
+  "local",
+  "remote"
+]
+
 export function activate (_context: ExtensionContext) {
   analyzeDependencies();
 
@@ -58,6 +68,7 @@ export async function Go (uri: Uri, useCubit: boolean) {
 
   let entityName = featureName;
   let isList = false;
+  let datasource = 0;
 
   if(!useCubit){
     entityName = await promptForEntityName(featureName);
@@ -66,6 +77,7 @@ export async function Go (uri: Uri, useCubit: boolean) {
     }
     entityName = `${entityName}`;
     isList = await promptForDataList();
+    datasource = await promptForDatasource();
   }
  
   let targetDirectory = "";
@@ -94,6 +106,7 @@ export async function Go (uri: Uri, useCubit: boolean) {
       `${entityName}`,
       isList,
       targetDirectory,
+      datasource,
     );
     window.showInformationMessage(
       `Successfully Generated ${pascalCaseFeatureName} Feature`
@@ -170,15 +183,28 @@ export async function promptForDataList (): Promise<boolean> {
   const useDataListPromptValues: string[] = ["no (default)", "yes (advanced)"];
   const useDataListPromptOptions: QuickPickOptions = {
     placeHolder:
-      "Is your response is List<DataModel>?",
+       "Is your response is List<Data>?",
     canPickMany: false,
   };
   const answer = await window.showQuickPick(
     useDataListPromptValues,
     useDataListPromptOptions
   );
-
   return answer === "yes (advanced)";
+}
+
+export async function promptForDatasource (): Promise<number> {
+  const useDataSourcePromptValues: string[] = options;
+  const useDataSourcePromptOptions: QuickPickOptions = {
+    placeHolder:
+       "Which datasource do you want to use?",
+    canPickMany: false,
+  };
+  const answer = await window.showQuickPick(
+    useDataSourcePromptValues,
+    useDataSourcePromptOptions
+  );
+  return useDataSourcePromptValues.indexOf(answer);
 }
 
 export async function promptForUseEquatable (): Promise<boolean> {
@@ -201,14 +227,15 @@ async function generateCleanArchitectureCode(
   featureName: string,
   entityName: string,
   isList: boolean,
-  targetDirectory: string) {
+  targetDirectory: string,
+  datasource: number) {
   const featuresDirectoryPath = getFeaturesDirectoryPath(targetDirectory);
   const featureDirectoryPath = path.join(featuresDirectoryPath, featureName);
   const dataDirectoryPath = path.join(featureDirectoryPath, "data");
   const domainDirectoryPath = path.join(featureDirectoryPath, "domain");
   await Promise.all([
     generateDomainCode(featureName, entityName, isList, domainDirectoryPath),
-    generateDataCode(featureName, entityName,isList, dataDirectoryPath)
+    generateDataCode(featureName, entityName,isList, dataDirectoryPath, datasource)
   ]);
 }
 
@@ -262,67 +289,77 @@ async function generateDataCode(
   featureName: string,
   entityName: string,
   isList: boolean,
-  targetDirectory: string) {
+  targetDirectory: string,
+  datasource: number) {
   await Promise.all([
-    createDataDatasourceTemplate(entityName, isList, path.join(targetDirectory, "datasources")),
-    createDataModelTemplate(entityName, isList, path.join(targetDirectory, "models")),
-    createDataRepositoryTemplate(entityName, isList, path.join(targetDirectory, "repositories")),
+    createDataDatasourceTemplate(entityName, isList, path.join(targetDirectory, "datasources"), datasource),
+    createDataModelTemplate(entityName, isList, path.join(targetDirectory, "models"), datasource),
+    createDataRepositoryTemplate(entityName, isList, path.join(targetDirectory, "repositories"), datasource),
   ]);
 }
 
 async function createDataDatasourceTemplate(
   entityName: string,
   isList: boolean,
-  targetDirectory: string) {
-  // api
+  targetDirectory: string,
+  datasource: number) {
   const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
-  const apiFileName = `${snakeCaseName}_api.dart`;
-  const apiFilePath = path.join(targetDirectory, apiFileName);
-  const apiFileContent = await genCleanDataApiTemplate(entityName, isList);
-  await createTemplateFile(apiFilePath, apiFileContent);
   // datasource type
   const datasourceTypeFileName = `${snakeCaseName}_datasource_type.dart`;
   const datasourceTypeFilePath = path.join(targetDirectory, datasourceTypeFileName);
   const datasourceTypeFileContent = await genCleanDataDatasourceTypeTemplate(entityName, isList);
   await createTemplateFile(datasourceTypeFilePath, datasourceTypeFileContent);
-  // local datasource
-  const localDatasourceFileName = `${snakeCaseName}_local_datasource.dart`;
-  const localDatasourceFilePath = path.join(targetDirectory, localDatasourceFileName);
-  const localDatasourceFileContent = await genCleanLocalDataDatasourceTemplate(entityName, isList);
-  await createTemplateFile(localDatasourceFilePath, localDatasourceFileContent);
-  // remote datasource
-  const remoteDatasourceFileName = `${snakeCaseName}_remote_datasource.dart`;
-  const remoteDatasourceFilePath = path.join(targetDirectory, remoteDatasourceFileName);
-  const remoteDatasourceFileContent = await genCleanRemoteDatasourceTemplate(entityName, isList);
-  await createTemplateFile(remoteDatasourceFilePath, remoteDatasourceFileContent);
+  if(datasource === BOTH_DATASOURCE || datasource === REMOTE_DATASOURCE) {
+    // api
+    const apiFileName = `${snakeCaseName}_api.dart`;
+    const apiFilePath = path.join(targetDirectory, apiFileName);
+    const apiFileContent = await genCleanDataApiTemplate(entityName, isList);
+    await createTemplateFile(apiFilePath, apiFileContent);
+    // remote datasource
+    const remoteDatasourceFileName = `${snakeCaseName}_remote_datasource.dart`;
+    const remoteDatasourceFilePath = path.join(targetDirectory, remoteDatasourceFileName);
+    const remoteDatasourceFileContent = await genCleanRemoteDatasourceTemplate(entityName, isList);
+    await createTemplateFile(remoteDatasourceFilePath, remoteDatasourceFileContent);
+  }
+  if(datasource === BOTH_DATASOURCE || datasource === LOCAL_DATASOURCE) {
+    // local datasource
+    const localDatasourceFileName = `${snakeCaseName}_local_datasource.dart`;
+    const localDatasourceFilePath = path.join(targetDirectory, localDatasourceFileName);
+    const localDatasourceFileContent = await genCleanLocalDataDatasourceTemplate(entityName, isList);
+    await createTemplateFile(localDatasourceFilePath, localDatasourceFileContent);
+  }
 }
 
 async function createDataModelTemplate(
   entityName: string,
   isList: boolean,
-  targetDirectory: string) {
+  targetDirectory: string,
+  datasource: number) {
   const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
   // model
   const modelFileName = `${snakeCaseName}_model.dart`;
   const modelFilePath = path.join(targetDirectory, modelFileName);
   const modelFileContent = await genCleanDataEntitiesTemplate(entityName);  
   await createTemplateFile(modelFilePath, modelFileContent);
-  // net response
-  const netResName = isList ? `${snakeCaseName}s` : `${snakeCaseName}`;
-  const netResponseFileName = `${netResName}_net_response.dart`;
-  const netResponseFilePath = path.join(targetDirectory, netResponseFileName);
-  const netResponseFileContent = await genCleanDataNetResponseTemplate(entityName, isList);
-  await createTemplateFile(netResponseFilePath, netResponseFileContent);
+  if(datasource == BOTH_DATASOURCE || datasource == REMOTE_DATASOURCE) {
+    // net response
+    const netResName = isList ? `${snakeCaseName}s` : `${snakeCaseName}`;
+    const netResponseFileName = `${netResName}_net_response.dart`;
+    const netResponseFilePath = path.join(targetDirectory, netResponseFileName);
+    const netResponseFileContent = await genCleanDataNetResponseTemplate(entityName, isList);
+    await createTemplateFile(netResponseFilePath, netResponseFileContent);
+  }
 }
 
 async function createDataRepositoryTemplate(
   entityName: string,
   isList: boolean,
-  targetDirectory: string) {
+  targetDirectory: string,
+  datasource: number) {
   const snakeCaseName = changeCase.snakeCase(entityName.toLowerCase());
   const repositoryFileName = `${snakeCaseName}_repo.dart`;
   const repositoryFilePath = path.join(targetDirectory, repositoryFileName);
-  const repositoryFileContent = await genCleanDataRepoTemplate(entityName, isList);
+  const repositoryFileContent = await genCleanDataRepoTemplate(entityName, isList, datasource);
   await createTemplateFile(repositoryFilePath, repositoryFileContent);
 }
 
@@ -409,8 +446,6 @@ export async function generateFeatureArchitecture (
     ? await generateCubitCode(featureName, presentationDirectoryPath, useEquatable)
     : await generateBlocCode(featureName, presentationDirectoryPath, useEquatable, useFreezed);
 }
-
-
 
 export function getFeaturesDirectoryPath (currentDirectory: string): string {
   // Split the path
